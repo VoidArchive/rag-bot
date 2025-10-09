@@ -1,6 +1,7 @@
 import string
 
 from nltk.stem import PorterStemmer
+from nltk.stem.snowball import stopwords
 
 from .search_utils import (
     DEFAULT_SEARCH_LIMIT,
@@ -38,18 +39,11 @@ def preprocess_text(text: str) -> str:
 
 def tokenize_text(text: str) -> list[str]:
     text = preprocess_text(text)
-    tokens = text.split()
-    valid_tokens = []
-    for token in tokens:
-        if token:
-            valid_tokens.append(token)
     stop_words = load_stopwords()
-    filtered_words = []
-    for word in valid_tokens:
-        if word not in stop_words:
-            filtered_words.append(word)
     stemmer = PorterStemmer()
-    stemmed_words = []
-    for word in filtered_words:
-        stemmed_words.append(stemmer.stem(word))
-    return stemmed_words
+
+    return [
+        stemmer.stem(token)
+        for token in text.split()
+        if token and token not in stop_words
+    ]
