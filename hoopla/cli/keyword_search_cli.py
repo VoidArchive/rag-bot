@@ -3,6 +3,7 @@
 import argparse
 import json
 import string
+from nltk.stem import PorterStemmer
 
 
 def main() -> None:
@@ -26,13 +27,31 @@ def search_movies(query: str) -> None:
     with open("data/movies.json", "r") as f:
         data = json.load(f)
 
+    with open("data/stopwords.txt", "r") as f:
+        stop_words = f.read().splitlines()
+
     translator = str.maketrans("", "", string.punctuation)
+    stemmer = PorterStemmer()
+    query_normalized = query.lower().translate(translator)
+    query_tokens = [
+        stemmer.stem(token)
+        for token in query_normalized.split()
+        if token and token not in stop_words
+    ]
 
     results = []
-    query_normalized = query.lower().translate(translator)
     for movie in data["movies"]:
         title_normalized = movie["title"].lower().translate(translator)
-        if query_normalized in title_normalized:
+        title_tokens = [
+            stemmer.stem(token)
+            for token in title_normalized.split()
+            if token and token not in stop_words
+        ]
+        if any(
+            query_token in title_token
+            for query_token in query_tokens
+            for title_token in title_tokens
+        ):
             results.append(movie)
 
     results.sort(key=lambda m: m["id"])
