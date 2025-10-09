@@ -1,25 +1,24 @@
 import string
 
 from nltk.stem import PorterStemmer
-from nltk.stem.snowball import stopwords
 
 from .search_utils import (
     DEFAULT_SEARCH_LIMIT,
-    load_movies,
     load_stopwords,
 )
 
 
-def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
-    movies = load_movies()
+def search_command(index, query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
+    query_tokens = tokenize_text(query)
     results = []
-    for movie in movies:
-        query_tokens = tokenize_text(query)
-        title_tokens = tokenize_text(movie["title"])
-        if has_matching_token(query_tokens, title_tokens):
-            results.append(movie)
+    seen_ids = set()
+    for token in query_tokens:
+        doc_ids = index.get_documents(token)
+        for doc_id in doc_ids:
+            results.append(index.docmap[doc_id])
+            seen_ids.add(doc_id)
             if len(results) >= limit:
-                break
+                return results
     return results
 
 
