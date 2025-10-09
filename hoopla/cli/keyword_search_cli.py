@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import string
 
 
 def main() -> None:
@@ -25,9 +26,13 @@ def search_movies(query: str) -> None:
     with open("data/movies.json", "r") as f:
         data = json.load(f)
 
+    translator = str.maketrans("", "", string.punctuation)
+
     results = []
+    query_normalized = query.lower().translate(translator)
     for movie in data["movies"]:
-        if query in movie["title"]:
+        title_normalized = movie["title"].lower().translate(translator)
+        if query_normalized in title_normalized:
             results.append(movie)
 
     results.sort(key=lambda m: m["id"])
@@ -40,4 +45,3 @@ def search_movies(query: str) -> None:
 
 if __name__ == "__main__":
     main()
-
