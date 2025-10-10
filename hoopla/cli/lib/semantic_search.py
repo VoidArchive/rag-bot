@@ -1,6 +1,5 @@
 import os
 
-from huggingface_hub import duplicate_space
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
@@ -120,3 +119,18 @@ def search_movies(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> None:
         )
         print(f"{i}. {result['title']} (score: {result['score']:.4f})")
         print(f"    {desc}\n")
+
+
+def chunk_text(text: str, chunk_size: int = 200, overlap: int = 0) -> None:
+    words = text.split()
+    chunks = []
+
+    i = 0
+    while i < len(words):
+        chunk = " ".join(words[i : i + chunk_size])
+        chunks.append(chunk)
+        i += chunk_size - overlap
+
+    print(f"Chunking {len(text)} characters")
+    for i, chunk in enumerate(chunks, 1):
+        print(f"{i}. {chunk}")
