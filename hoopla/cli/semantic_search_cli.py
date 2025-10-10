@@ -2,7 +2,13 @@
 
 import argparse
 
-from lib.semantic_search import verify_model, embed_text, verify_embeddings
+from lib.semantic_search import (
+    search_movies,
+    verify_model,
+    embed_text,
+    verify_embeddings,
+    embed_query_text,
+)
 
 
 def main() -> None:
@@ -17,6 +23,17 @@ def main() -> None:
     )
     embed_text_parser.add_argument("text", type=str, help="Text to embed")
 
+    embedquery_parser = subparsers.add_parser(
+        "embedquery", help="Generate embedding for query"
+    )
+    embedquery_parser.add_argument("query", type=str, help="Query to embed")
+
+    search_parser = subparsers.add_parser("search", help="Search movies by meaning")
+    search_parser.add_argument("query", type=str, help="Search query")
+    search_parser.add_argument(
+        "--limit", type=int, default=5, help="Number of results to return"
+    )
+
     args = parser.parse_args()
 
     match args.command:
@@ -26,6 +43,10 @@ def main() -> None:
             embed_text(args.text)
         case "verify_embeddings":
             verify_embeddings()
+        case "embedquery":
+            embed_query_text(args.query)
+        case "search":
+            search_movies(args.query, args.limit)
         case _:
             parser.exit(2, parser.print_help())
 

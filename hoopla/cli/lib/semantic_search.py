@@ -4,7 +4,7 @@ from huggingface_hub import duplicate_space
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-from .search_utils import CACHE_DIR, load_movies
+from .search_utils import CACHE_DIR, DEFAULT_SEARCH_LIMIT, load_movies
 
 
 class SemanticSearch:
@@ -42,6 +42,26 @@ class SemanticSearch:
                 return self.embeddings
         return self.build_embeddings(documents)
 
+    def search(self, query: str, limit: int) -> list[dict]:
+        if self.embeddings is None or self.documents is None:
+            raise ValueError("No embeddings loaded")
+        query_embedding = self.generate_embedding(query)
+        similarities = []
+        for i, doc_embedding in enumerate(self.embeddings):
+            score = cosine_similarity(query_embedding, doc_embedding)
+            similarities.append((score, self.documents[i]))
+        similarities.sort(key=lambda x: x[0], reverse=True)
+        results = []
+        for score, doc in similarities[:limit]:
+            results.append(
+                {
+                    "score": score,
+                    "title": doc["title"],
+                    "description": doc["description"],
+                }
+            )
+        return results
+
 
 def verify_model() -> None:
     ss = SemanticSearch()
@@ -65,3 +85,38 @@ def verify_embeddings() -> None:
     print(
         f"embeddings shape: {embeddings.shape[0]} vectors in {embeddings.shape[1]} dimensions"
     )
+
+
+def embed_query_text(query: str) -> None:
+    ss = SemanticSearch()
+    embedding = ss.generate_embedding(query)
+    print(f"Query: {query}")
+    print(f"First 5 dimensions: {embedding[:5]}")
+    print(f"Shape: {embedding.shape}")
+
+
+def cosine_similarity(vec1, vec2):
+    dot_product = np.dot(vec1, vec2)
+    norm1 = np.linalg.norm(vec1)
+    norm2 = np.linalg.norm(vec2)
+
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+
+    return dot_product / (norm1 * norm2)
+
+
+def search_movies(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> None:
+    ss = SemanticSearch()
+    movies = load_movies()
+    ss.load_or_create_embeddings(movies)
+    results = ss.search(query, limit)
+
+    for i, result in enumerate(results, 1):
+        desc = (
+            result["description"][:100] + "..."
+            if len(result["description"]) > 100
+            else result["description"]
+        )
+        print(f"{i}. {result['title']} (score: {result['score']:.4f})")
+        print(f"    {desc}\n")
