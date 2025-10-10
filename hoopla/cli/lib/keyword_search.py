@@ -3,7 +3,6 @@ import os
 import pickle
 import string
 from collections import Counter, defaultdict
-from typing import Callable
 
 from nltk.stem import PorterStemmer
 
@@ -107,6 +106,26 @@ class InvertedIndex:
         length_norm = 1 - b + b * (doc_length / avg_doc_length)
         return (tf * (k1 + 1)) / (tf + k1 * length_norm)
 
+    def bm25(self, doc_id: int, term: str) -> float:
+        bm25_tf = self.get_bm25_tf(doc_id, term)
+        bm25_idf = self.get_bm25_idf(term)
+        return bm25_tf * bm25_idf
+
+    def bm25_search(self, query: str, limit: int) -> list[dict]:
+        query_tokens = tokenize_text(query)
+        scores = defaultdict(float)
+
+        for query_token in query_tokens:
+            matching_doc_ids = self.get_documents(query_token)
+            for doc_id in matching_doc_ids:
+                scores[doc_id] += self.bm25(doc_id, query_token)
+        sorted_docs = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        results = []
+        for doc_id, score in sorted_docs[:limit]:
+            doc = self.docmap[doc_id]
+            results.append({**doc, "score": score})
+        return results
+
 
 def build_command() -> None:
     idx = InvertedIndex()
@@ -190,3 +209,9 @@ def bm25_tf_command(
     idx = InvertedIndex()
     idx.load()
     return idx.get_bm25_tf(doc_id, term, k1, b)
+
+
+def bm25_search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
+    idx = InvertedIndex()
+    idx.load()
+    return idx.bm25_search(query, limit)
