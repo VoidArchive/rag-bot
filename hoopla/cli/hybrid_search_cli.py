@@ -1,6 +1,10 @@
 import argparse
 
-from cli.lib.hybrid_search import normalize_scores
+from lib.hybrid_search import (
+    normalize_scores,
+    rrf_search_command,
+    weighted_search_command,
+)
 
 
 def main() -> None:
@@ -12,6 +16,26 @@ def main() -> None:
     normalize_parser.add_argument(
         "scores", type=float, nargs="*", help="List of scores to normalize"
     )
+    weighted_parser = subparsers.add_parser(
+        "weighted-search", help="Search using weighted hybrid search"
+    )
+    weighted_parser.add_argument("query", type=str, help="Search query")
+    weighted_parser.add_argument(
+        "--alpha", type=float, default=0.5, help="Weight for BM25 score (default: 0.5)"
+    )
+    weighted_parser.add_argument(
+        "--limit", type=int, default=5, help="Number of results to return (default: 5)"
+    )
+    rrf_parser = subparsers.add_parser(
+        "rrf-search", help="Search using Reciprocal Rank Fusion"
+    )
+    rrf_parser.add_argument("query", type=str, help="Search query")
+    rrf_parser.add_argument(
+        "--k", type=int, default=60, help="RRF k parameter (default: 60)"
+    )
+    rrf_parser.add_argument(
+        "--limit", type=int, default=5, help="Number of results to return (default: 5)"
+    )
     args = parser.parse_args()
 
     match args.command:
@@ -19,6 +43,10 @@ def main() -> None:
             normalized = normalize_scores(args.scores)
             for score in normalized:
                 print(f"* {score: .4f}")
+        case "weighted-search":
+            weighted_search_command(args.query, args.alpha, args.limit)
+        case "rrf-search":
+            rrf_search_command(args.query, args.k, args.limit)
         case _:
             parser.print_help()
 
