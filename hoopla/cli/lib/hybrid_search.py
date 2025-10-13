@@ -167,7 +167,16 @@ def weighted_search_command(query: str, alpha: float = 0.5, limit: int = 5) -> N
         print()
 
 
-def rrf_search_command(query: str, k: int = 60, limit: int = 5) -> None:
+def rrf_search_command(
+    query: str, k: int = 60, limit: int = 5, enhance: str = None
+) -> None:
+    # Enhance query if requested
+    original_query = query
+    if enhance == "spell":
+        query = enhance_query_spell(query)
+        if query != original_query:
+            print(f"Enhanced query ({enhance}): '{original_query}' -> '{query}'\n")
+
     documents = load_movies()
     hybrid = HybridSearch(documents)
     results = hybrid.rrf_search(query, k, limit)
@@ -180,3 +189,29 @@ def rrf_search_command(query: str, k: int = 60, limit: int = 5) -> None:
         print(f"   BM25 Rank: {bm25_rank}, Semantic Rank: {semantic_rank}")
         print(f"   {result['description'][:100]}...")
         print()
+
+
+def enhance_query_spell(query: str) -> str:
+    from google import genai
+    from dotenv import load_dotenv
+
+    load_dotenv()
+    api_key = os.environ.get("GEMINI_API_KEY")
+
+    client = genai.Client(api_key=api_key)
+    prompt = f"""Fix any spelling errors in this movie search query.
+
+Only correct obvious typos. Don't change correctly spelled words.
+
+Query: "{query}"
+
+If no errors, return the original query.
+Corrected:"""
+    response = client.models.generate_content(
+        model="gemini-2.0-flash-001",
+        contents=prompt,
+    )
+    if response.text is not None:
+        return response.text.strip()
+    else:
+        return "Gemini is not working"
