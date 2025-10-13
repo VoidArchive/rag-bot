@@ -51,7 +51,7 @@ def main() -> None:
     rrf_parser.add_argument(
         "--rerank-method",
         type=str,
-        choices=["individual", "batch"],
+        choices=["individual", "batch", "cross_encoder"],
         help="Reranking method",
     )
     rrf_parser.add_argument(
@@ -105,6 +105,8 @@ def main() -> None:
 
             for i, res in enumerate(result["results"], 1):
                 print(f"{i}. {res['title']}")
+                if "cross_encoder_score" in res:
+                    print(f"   Cross Encoder Score: {res.get('cross_encoder_score', 0):.3f}")
                 if "individual_score" in res:
                     print(f"   Rerank Score: {res.get('individual_score', 0):.3f}/10")
                 if "batch_rank" in res:

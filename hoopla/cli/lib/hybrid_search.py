@@ -92,7 +92,7 @@ def combine_search_results(
         if doc_id not in combined_scores:
             combined_scores[doc_id] = {
                 "title": result["title"],
-                "document": result["document"],
+                "document": result["description"],
                 "bm25_score": 0.0,
                 "semantic_score": 0.0,
             }
@@ -104,7 +104,7 @@ def combine_search_results(
         if doc_id not in combined_scores:
             combined_scores[doc_id] = {
                 "title": result["title"],
-                "document": result["document"],
+                "document": result["description"],
                 "bm25_score": 0.0,
                 "semantic_score": 0.0,
             }
@@ -141,7 +141,7 @@ def reciprocal_rank_fusion(
         if doc_id not in rrf_scores:
             rrf_scores[doc_id] = {
                 "title": result["title"],
-                "document": result["document"],
+                "document": result["description"],
                 "rrf_score": 0.0,
                 "bm25_rank": None,
                 "semantic_rank": None,
