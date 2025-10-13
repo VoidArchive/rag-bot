@@ -37,7 +37,16 @@ def main() -> None:
         "--limit", type=int, default=5, help="Number of results to return (default: 5)"
     )
     rrf_parser.add_argument(
-        "--enhance", type=str, choices=["spell"], help="Query enhancement method"
+        "--enhance",
+        type=str,
+        choices=["spell", "rewrite", "expand"],
+        help="Query enhancement method",
+    )
+    rrf_parser.add_argument(
+        "--rerank-method",
+        type=str,
+        choices=["individual"],
+        help="Reranking method to use",
     )
     args = parser.parse_args()
 
@@ -50,6 +59,10 @@ def main() -> None:
             weighted_search_command(args.query, args.alpha, args.limit)
         case "rrf-search":
             rrf_search_command(args.query, args.k, args.limit, args.enhance)
+        case "rrf-search":
+            rrf_search_command(
+                args.query, args.k, args.limit, args.enhance, args.rerank_method
+            )
         case _:
             parser.print_help()
 
