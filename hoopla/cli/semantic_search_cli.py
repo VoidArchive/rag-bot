@@ -7,6 +7,7 @@ from lib.semantic_search import (
     embed_chunks_command,
     embed_query_text,
     embed_text,
+    search_chunks_command,
     semantic_chunk_text,
     semantic_search,
     verify_embeddings,
@@ -86,7 +87,14 @@ def main() -> None:
         "embed_chunks",
         help="Generate embeddings for chunked documents",
     )
-
+    search_chunked_parser = subparsers.add_parser(
+        "search_chunked",
+        help="Search for movies using chunked semantic search",
+    )
+    search_chunked_parser.add_argument("query", type=str, help="Search query")
+    search_chunked_parser.add_argument(
+        "--limit", type=int, default=5, help="Number of results to return"
+    )
     args = parser.parse_args()
 
     match args.command:
@@ -107,6 +115,8 @@ def main() -> None:
         case "embed_chunks":
             embeddings = embed_chunks_command()
             print(f"Generated {len(embeddings)} chunked embeddings")
+        case "search_chunked":
+            search_chunks_command(args.query, args.limit)
         case _:
             parser.print_help()
 

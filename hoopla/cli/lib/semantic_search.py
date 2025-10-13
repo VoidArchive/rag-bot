@@ -13,6 +13,7 @@ from .search_utils import (
     DEFAULT_SEARCH_LIMIT,
     DEFAULT_SEMANTIC_CHUNK_SIZE,
     MOVIE_EMBEDDINGS_PATH,
+    format_search_result,
     load_movies,
 )
 
@@ -182,13 +183,22 @@ def semantic_chunk(
     max_chunk_size: int = DEFAULT_SEMANTIC_CHUNK_SIZE,
     overlap: int = DEFAULT_CHUNK_OVERLAP,
 ) -> list[str]:
+    text = text.strip()
+    if not text:
+        return []
+
     sentences = re.split(r"(?<=[.!?])\s+", text)
+
+    if len(sentences) == 1 and text[-1] not in ".!?":
+        sentences = [text]
     chunks = []
     i = 0
     n_sentences = len(sentences)
     while i < n_sentences - overlap:
         chunk_sentences = sentences[i : i + max_chunk_size]
-        chunks.append(" ".join(chunk_sentences))
+        chunk = " ".join(chunk_sentences).strip()
+        if chunk:
+            chunks.append(" ".join(chunk_sentences))
         i += max_chunk_size - overlap
     return chunks
 
@@ -265,8 +275,60 @@ class ChunkedSemanticSearch(SemanticSearch):
 
         return self.build_chunk_embeddings(documents)
 
+    def search_chunks(self, query: str, limit: int = 10) -> list[dict]:
+        if self.chunk_embeddings is None or self.chunk_metadata is None:
+            raise ValueError("No chunk embeddings loaded.")
+
+        query_embedding = self.generate_embedding(query)
+        chunk_scores = []
+        for i, chunk_embedding in enumerate(self.chunk_embeddings):
+            similarity = cosine_similarity(query_embedding, chunk_embedding)
+            metadata = self.chunk_metadata[i]
+            chunk_scores.append(
+                {
+                    "chunk_idx": metadata["chunk_idx"],
+                    "movie_idx": metadata["movie_idx"],
+                    "score": similarity,
+                }
+            )
+        movie_scores = {}
+        for chunk_score in chunk_scores:
+            movie_idx = chunk_score["movie_idx"]
+            score = chunk_score["score"]
+            if movie_idx not in movie_scores or score > movie_scores[movie_idx]:
+                movie_scores[movie_idx] = score
+        sorted_movies = sorted(movie_scores.items(), key=lambda x: x[1], reverse=True)
+        top_movies = sorted_movies[:limit]
+
+        results = []
+        for movie_idx, score in top_movies:
+            doc = self.documents[movie_idx]
+            result = format_search_result(
+                doc_id=doc["id"],
+                title=doc["title"],
+                document=doc["description"][:100],
+                score=score,
+            )
+            results.append(result)
+        return results
+
 
 def embed_chunks_command() -> np.ndarray:
     movies = load_movies()
     searcher = ChunkedSemanticSearch()
     return searcher.load_or_create_chunk_embeddings(movies)
+
+
+def search_chunks_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> None:
+    documents = load_movies()
+    searcher = ChunkedSemanticSearch()
+    searcher.load_or_create_chunk_embeddings(documents)
+    results = searcher.search_chunks(query, limit)
+    print(f"\nQuery: {query}")
+    print(f"Top {len(results)} results:")
+    print()
+
+    for i, result in enumerate(results, 1):
+        print(f"{i}. {result['title']} (score: {result['score']:.4f})")
+        print(f"   {result['document']}...")
+        print()
