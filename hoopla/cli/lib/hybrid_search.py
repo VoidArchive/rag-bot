@@ -1,9 +1,10 @@
+import logging
 import os
 from typing import Optional
 
 from .keyword_search import InvertedIndex
 from .query_enhancement import enhance_query
-from .reranking import rerank
+from .reranking import rerank, evaluate_results
 from .search_utils import (
     DEFAULT_ALPHA,
     DEFAULT_SEARCH_LIMIT,
@@ -13,6 +14,10 @@ from .search_utils import (
     load_movies,
 )
 from .semantic_search import ChunkedSemanticSearch
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
 
 
 class HybridSearch:
@@ -205,23 +210,60 @@ def rrf_search_command(
     enhance: Optional[str] = None,
     rerank_method: Optional[str] = None,
     limit: int = DEFAULT_SEARCH_LIMIT,
+    evaluate: bool = False,
 ) -> dict:
     movies = load_movies()
     searcher = HybridSearch(movies)
 
     original_query = query
+    # Log Stage 1: Original query
+    logger.debug(f"Stage 1 - Original query: '{original_query}'")
+
     enhanced_query = None
     if enhance:
         enhanced_query = enhance_query(query, method=enhance)
         query = enhanced_query
+        # Log Stage 2: Enhanced query
+        logger.debug(f"Stage 2 - Enhanced query: '{enhanced_query}'")
+    else:
+        logger.debug("Stage 2 - No query enhancement applied")
 
     search_limit = limit * SEARCH_MULTIPLIER if rerank_method else limit
     results = searcher.rrf_search(query, k, search_limit)
+
+    # Log Stage 3: Results after RRF search
+    logger.debug(
+        f"Stage 3 - RRF Search results (top {min(5, len(results))} of {len(results)}):"
+    )
+    for i, res in enumerate(results[:5], 1):
+        logger.debug(f"  {i}. {res['title']} (RRF Score: {res['score']:.4f})")
 
     reranked = False
     if rerank_method:
         results = rerank(query, results, method=rerank_method, limit=limit)
         reranked = True
+        # Log Stage 4: Results after re-ranking
+        logger.debug(
+            f"Stage 4 - Re-ranked results using {rerank_method} (top {min(5, len(results))} of {len(results)}):"
+        )
+        for i, res in enumerate(results[:5], 1):
+            score_info = ""
+            if "cross_encoder_score" in res:
+                score_info = f"Cross-Encoder: {res['cross_encoder_score']:.4f}"
+            elif "individual_score" in res:
+                score_info = f"Individual: {res['individual_score']:.4f}"
+            elif "batch_rank" in res:
+                score_info = f"Batch Rank: {res['batch_rank']}"
+            logger.debug(f"  {i}. {res['title']} ({score_info})")
+    else:
+        logger.debug("Stage 4 - No re-ranking applied")
+
+    evaluation_scores = None
+    if evaluate:
+        evaluation_scores = evaluate_results(query, results)
+        for i, result in enumerate(results):
+            if i < len(evaluation_scores):
+                result["evaluation_score"] = evaluation_scores[i]
 
     return {
         "original_query": original_query,
@@ -232,4 +274,5 @@ def rrf_search_command(
         "rerank_method": rerank_method,
         "reranked": reranked,
         "results": results,
+        "evaluation_scores": evaluation_scores,
     }

@@ -114,3 +114,47 @@ def rerank(
         return cross_encoder_rerank(query, documents, limit)
     else:
         return documents[:limit]
+
+def evaluate_results(query: str, results: list[dict]) -> list[int]:
+    """
+    Evaluate search results using LLM scoring (0-3 scale).
+    
+    Returns a list of scores in the same order as the input results.
+    """
+    if not results:
+        return []
+    
+    # Format results for the prompt
+    formatted_results = []
+    for i, result in enumerate(results, 1):
+        formatted_results.append(
+            f"{i}. {result.get('title', '')} - {result.get('document', '')[:200]}"
+        )
+    
+    prompt = f"""Rate how relevant each result is to this query on a 0-3 scale:
+
+Query: "{query}"
+
+Results:
+{chr(10).join(formatted_results)}
+
+Scale:
+- 3: Highly relevant
+- 2: Relevant
+- 1: Marginally relevant
+- 0: Not relevant
+
+Do NOT give any numbers out than 0, 1, 2, or 3.
+
+Return ONLY the scores in the same order you were given the documents. Return a valid JSON list, nothing else. For example:
+
+[2, 0, 3, 2, 0, 1]"""
+    
+    response = client.models.generate_content(model=model, contents=prompt)
+    scores_text = (response.text or "").strip()
+    
+    # Parse the JSON response
+    scores = json.loads(scores_text)
+    
+    return scores
+        

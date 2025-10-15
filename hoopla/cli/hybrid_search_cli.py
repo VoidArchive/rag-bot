@@ -57,6 +57,11 @@ def main() -> None:
     rrf_parser.add_argument(
         "--limit", type=int, default=5, help="Number of results to return (default=5)"
     )
+    rrf_parser.add_argument(
+        "--evaluate",
+        action="store_true",
+        help="Evaluate results using LLM scoring (0-3 scale)",
+    )
 
     args = parser.parse_args()
 
@@ -86,7 +91,12 @@ def main() -> None:
                 print()
         case "rrf-search":
             result = rrf_search_command(
-                args.query, args.k, args.enhance, args.rerank_method, args.limit
+                args.query,
+                args.k,
+                args.enhance,
+                args.rerank_method,
+                args.limit,
+                args.evaluate,
             )
 
             if result["enhanced_query"]:
@@ -106,7 +116,9 @@ def main() -> None:
             for i, res in enumerate(result["results"], 1):
                 print(f"{i}. {res['title']}")
                 if "cross_encoder_score" in res:
-                    print(f"   Cross Encoder Score: {res.get('cross_encoder_score', 0):.3f}")
+                    print(
+                        f"   Cross Encoder Score: {res.get('cross_encoder_score', 0):.3f}"
+                    )
                 if "individual_score" in res:
                     print(f"   Rerank Score: {res.get('individual_score', 0):.3f}/10")
                 if "batch_rank" in res:
@@ -122,6 +134,13 @@ def main() -> None:
                     print(f"   {', '.join(ranks)}")
                 print(f"   {res['document'][:100]}...")
                 print()
+            if result.get("evaluation_scores"):
+                print("\n" + "=" * 50)
+                print("EVALUATION REPORT")
+                print("=" * 50 + "\n")
+                for i, res in enumerate(result["results"], 1):
+                    score = res.get("evaluation_score", 0)
+                    print(f"{i}. {res['title']}: {score}/3")
         case _:
             parser.print_help()
 

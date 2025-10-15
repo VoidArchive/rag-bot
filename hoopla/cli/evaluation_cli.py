@@ -39,11 +39,14 @@ def main():
         relevant_retrieved = retrieved_set.intersection(relevant_docs)
         precision = len(relevant_retrieved) / len(retrieved_titles) if retrieved_titles else 0
         recall = len(relevant_retrieved) / len(relevant_docs) if relevant_docs else 0
+        f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+
 
         # Print results
         print(f"- Query: {query}")
         print(f"  - Precision@{limit}: {precision:.4f}")
         print(f"  - Recall@{limit}: {recall:.4f}")
+        print(f"  - F1 Score: {f1_score:.4f}")
         print(f"  - Retrieved: {', '.join(retrieved_titles)}")
         print(f"  - Relevant: {', '.join(sorted(relevant_docs))}")
         print()
